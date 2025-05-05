@@ -25,7 +25,7 @@
       color: #ff4081;
       font-size: 2rem;
     }
-    input, button {
+    input, button, select {
       padding: 10px;
       margin: 5px;
       border-radius: 5px;
@@ -45,7 +45,7 @@
     button:hover {
       transform: scale(1.05);
     }
-    .top-bar, .stats-bar {
+    .top-bar, .stats-bar, .filter-bar {
       display: flex;
       flex-wrap: wrap;
       gap: 10px;
@@ -94,7 +94,7 @@
       background-color: #e60000;
     }
     @media (max-width: 600px) {
-      input, button {
+      input, button, select {
         width: 100%;
         box-sizing: border-box;
       }
@@ -109,6 +109,22 @@
       <div class="stat-box" id="total-sent">💸 Gönderilen: €0.00</div>
       <div class="stat-box" id="total-sold">💰 Satış: €0.00</div>
       <div class="stat-box" id="avg-profit">📈 Ortalama Kâr: —</div>
+    </div>
+
+    <div class="filter-bar">
+      <input type="text" id="searchInput" placeholder="🔍 Ürün adı ara..." oninput="loadData()">
+      <select id="typeFilter" onchange="loadData()">
+        <option value="">🧥 Tüm Türler</option>
+        <option value="kask">Kask</option>
+        <option value="ceket">Ceket</option>
+        <option value="pantolon">Pantolon</option>
+        <option value="tulum">Tulum</option>
+      </select>
+      <select id="dateFilter" onchange="loadData()">
+        <option value="all">📆 Tüm Zamanlar</option>
+        <option value="7days">Son 7 Gün</option>
+        <option value="month">Bu Ay</option>
+      </select>
     </div>
 
     <div class="top-bar">
@@ -195,7 +211,33 @@
     }
 
     async function loadData() {
-      const { data } = await supabase.from("gears").select("*").order("id", { ascending: true });
+      let query = supabase.from("gears").select("*").order("id", { ascending: true });
+
+      const search = document.getElementById("searchInput").value.toLowerCase();
+      const type = document.getElementById("typeFilter").value;
+      const date = document.getElementById("dateFilter").value;
+
+      const today = new Date();
+      let startDate = null;
+
+      if (date === "7days") {
+        startDate = new Date(today.setDate(today.getDate() - 7));
+      } else if (date === "month") {
+        startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+      }
+
+      if (startDate) {
+        const iso = startDate.toISOString();
+        query = query.gte("inserted_at", iso);
+      }
+
+      const { data } = await query;
+      const filtered = data.filter(row => {
+        const matchName = search === "" || row.item.toLowerCase().includes(search);
+        const matchType = type === "" || row.type === type;
+        return matchName && matchType;
+      });
+
       const table = document.getElementById("list");
       let totalSent = 0;
       let totalSold = 0;
@@ -215,15 +257,13 @@
         </tr>
       `;
 
-      data.forEach(row => {
+      filtered.forEach(row => {
         const r = table.insertRow();
         const sellInputId = "sell_" + row.id;
         const profitId = "profit_" + row.id;
 
         totalSent += row.total_sent;
-        if (row.sold_price !== null) {
-          totalSold += row.sold_price;
-        }
+        if (row.sold_price !== null) totalSold += row.sold_price;
         if (row.profit_percent !== null) {
           profitSum += row.profit_percent;
           profitCount++;
@@ -235,7 +275,7 @@
           <td>€${row.agreed_price.toFixed(2)}</td>
           <td>€${row.paypal_fee.toFixed(2)}</td>
           <td>€${row.total_sent.toFixed(2)}</td>
-          <td><input class="inline-sell" type="number" id="${sellInputId}" value="${row.sold_price !== null ? row.sold_price : ''}" placeholder="Satış" onkeypress="handleSell(event, ${row.id}, ${row.total_sent}, '${sellInputId}', '${profitId}')"></td>
+          <td><input class="inline-sell" type="number" id="${sellInputId}" value="${row.sold_price ?? ''}" placeholder="Satış" onkeypress="handleSell(event, ${row.id}, ${row.total_sent}, '${sellInputId}', '${profitId}')"></td>
           <td id="${profitId}">${row.profit_percent !== null ? row.profit_percent.toFixed(2) + "%" : "—"}</td>
           <td><button class="delete-btn" onclick="deleteEntry(${row.id})">Sil</button></td>
         `;
