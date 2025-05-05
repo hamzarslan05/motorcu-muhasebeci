@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <title>Motorcu Muhasebeci 3000</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: #121212;
+      color: #f1f1f1;
+    }
+    .container {
+      max-width: 900px;
+      margin: auto;
+    }
+    h1 {
+      color: #ff4081;
+    }
+    input {
+      padding: 10px;
+      margin: 5px;
+      border-radius: 5px;
+      border: none;
+      width: 160px;
+    }
+    button {
+      padding: 10px;
+      margin: 5px;
+      border: none;
+      border-radius: 5px;
+      background-color: #ff4081;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    table {
+      width: 100%;
+      margin-top: 20px;
+      border-collapse: collapse;
+      background-color: #1e1e1e;
+    }
+    th, td {
+      padding: 10px;
+      border: 1px solid #333;
+      text-align: center;
+    }
+    input.inline-sell {
+      width: 80px;
+      padding: 5px;
+      text-align: center;
+      border-radius: 4px;
+      border: 1px solid #888;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Motorcu Muhasebeci 3000</h1>
+    <div>
+      <input type="text" id="item" placeholder="ÜRÜN (Shoei NXR2)">
+      <input type="text" id="type" placeholder="TÜR (Kask, Ceket...)">
+      <input type="number" id="price" placeholder="Anlaşılan Fiyat" oninput="calculateTotal()">
+      <input type="number" id="total" placeholder="Gönderilecek Tutar" readonly>
+      <button onclick="addEntry()">Ekle</button>
+    </div>
+    <table id="list">
+      <tr>
+        <th>ÜRÜN</th>
+        <th>TÜR</th>
+        <th>Anlaşılan Fiyat</th>
+        <th>PayPal Ücreti</th>
+        <th>Gönderilen</th>
+        <th>Satış</th>
+        <th>Kâr (%)</th>
+      </tr>
+    </table>
+  </div>
+
+  <script>
+    const supabase = supabase.createClient(
+      "https://ccjgiozvnbqimplznkpw.supabase.co",
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNjamdpb3p2bmJxaW1wbHpua3B3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY0NTEyNjEsImV4cCI6MjA2MjAyNzI2MX0.ZXQ3df3jAWQCEJZp739bXvAzONds8CikxTSER1Cg4iE"
+    );
+
+    function calculateTotal() {
+      const price = parseFloat(document.getElementById("price").value);
+      if (!isNaN(price)) {
+        const fee = 0.35 + price * 0.0249;
+        document.getElementById("total").value = (price + fee).toFixed(2);
+      } else {
+        document.getElementById("total").value = "";
+      }
+    }
+
+    async function addEntry() {
+      const item = document.getElementById("item").value;
+      const type = document.getElementById("type").value;
+      const agreed = parseFloat(document.getElementById("price").value);
+      const total = parseFloat(document.getElementById("total").value);
+
+      if (!item || !type || isNaN(agreed) || isNaN(total)) {
+        alert("Tüm alanlar doldurulmalı moruk!");
+        return;
+      }
+
+      const fee = total - agreed;
+
+      const { data, error } = await supabase.from("gears").insert([
+        {
+          item,
+          type,
+          agreed_price: agreed,
+          paypal_fee: fee,
+          total_sent: total
+        }
+      ]);
+
+      if (error) {
+        alert("Hata: " + error.message);
+      } else {
+        location.reload();
+      }
+    }
+
+    async function loadData() {
+      const { data, error } = await supabase.from("gears").select("*");
+      if (error) {
+        alert("Veriler çekilemedi: " + error.message);
+        return;
+      }
+
+      data.forEach(row => {
+        const table = document.getElementById("list");
+        const newRow = table.insertRow();
+
+        const sellInputId = "sell_" + row.id;
+        const profitId = "profit_" + row.id;
+
+        newRow.innerHTML = `
+          <td>${row.item}</td>
+          <td>${row.type}</td>
+          <td>€${row.agreed_price.toFixed(2)}</td>
+          <td>€${row.paypal_fee.toFixed(2)}</td>
+          <td>€${row.total_sent.toFixed(2)}</td>
+          <td>
+            <input type="number" id="${sellInputId}" class="inline-sell" placeholder="Satıldı mı?" onkeypress="handleSell(event, ${row.id}, ${row.total_sent}, '${sellInputId}', '${profitId}')">
+          </td>
+          <td id="${profitId}">${row.profit_percent !== null ? row.profit_percent.toFixed(2) + "%" : "—"}</td>
+        `;
+      });
+    }
+
+    async function handleSell(e, id, totalSent, inputId, profitId) {
+      if (e.key === "Enter") {
+        const soldPrice = parseFloat(document.getElementById(inputId).value);
+        if (!isNaN(soldPrice)) {
+          const profit = ((soldPrice - totalSent) / totalSent) * 100;
+
+          const { error } = await supabase.from("gears")
+            .update({ sold_price: soldPrice, profit_percent: profit })
+            .eq("id", id);
+
+          if (!error) {
+            document.getElementById(profitId).innerText = profit.toFixed(2) + "%";
+          }
+        }
+      }
+    }
+
+    window.onload = loadData;
+  </script>
+</body>
+</html>
