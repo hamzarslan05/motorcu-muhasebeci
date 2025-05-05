@@ -78,6 +78,7 @@
       Motorcu Muhasebeci
       <button onclick="toggleTheme()">🌗 Tema</button>
       <button onclick="randomizeColors()">🎨 Renkleri Karıştır</button>
+      <button onclick="resetTheme()">🔄 Karanlık / Aydınlık Sıfırla</button>
     </h1>
     <div>
       <input type="text" id="item" placeholder="ÜRÜN (Shoei NXR2)">
@@ -100,7 +101,7 @@
   </div>
 
   <script>
-    const supabase = supabase.createClient(
+    const supabase = window.supabase.createClient(
       "https://ccjgiozvnbqimplznkpw.supabase.co",
       "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNjamdpb3p2bmJxaW1wbHpua3B3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY0NTEyNjEsImV4cCI6MjA2MjAyNzI2MX0.ZXQ3df3jAWQCEJZp739bXvAzONds8CikxTSER1Cg4iE"
     );
@@ -141,7 +142,7 @@
       if (error) {
         alert("Hata: " + error.message);
       } else {
-        loadData(); // Reload only the table
+        await loadData();
         document.getElementById("item").value = "";
         document.getElementById("type").value = "";
         document.getElementById("price").value = "";
@@ -157,12 +158,10 @@
       }
 
       const table = document.getElementById("list");
-      // Temizle (başlık satırını koruyarak)
       while (table.rows.length > 1) table.deleteRow(1);
 
       data.forEach(row => {
         const newRow = table.insertRow();
-
         const sellInputId = "sell_" + row.id;
         const profitId = "profit_" + row.id;
 
@@ -185,7 +184,6 @@
         const soldPrice = parseFloat(document.getElementById(inputId).value);
         if (!isNaN(soldPrice)) {
           const profit = ((soldPrice - totalSent) / totalSent) * 100;
-
           const { error } = await supabase.from("gears")
             .update({ sold_price: soldPrice, profit_percent: profit })
             .eq("id", id);
@@ -199,6 +197,13 @@
 
     function toggleTheme() {
       document.body.classList.toggle("light-mode");
+    }
+
+    function resetTheme() {
+      document.body.removeAttribute("style");
+      document.querySelectorAll("input, button, table, th, td").forEach(el => {
+        el.removeAttribute("style");
+      });
     }
 
     function randomizeColors() {
