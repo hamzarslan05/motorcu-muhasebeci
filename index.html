@@ -7,86 +7,86 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
   <style>
     :root {
-      --bg: #121212;
-      --text: #f1f1f1;
-      --table-bg: #1e1e1e;
-      --accent: #ff4081;
-      --transition: 0.3s ease;
+      --dark-bg: #121212;
+      --light-bg: #ffffff;
+      --dark-text: #f1f1f1;
+      --light-text: #111111;
+      --primary: #ff4081;
+      --table-bg-dark: #1e1e1e;
+      --table-bg-light: #f9f9f9;
     }
 
     body {
       font-family: 'Segoe UI', sans-serif;
       margin: 0;
-      padding: 10px;
-      background-color: var(--bg);
-      color: var(--text);
-      transition: background-color var(--transition), color var(--transition);
+      padding: 20px;
+      background-color: var(--dark-bg);
+      color: var(--dark-text);
+      transition: background-color 0.4s ease, color 0.4s ease;
+    }
+
+    .light-mode {
+      background-color: var(--light-bg);
+      color: var(--light-text);
     }
 
     .container {
-      max-width: 900px;
+      max-width: 1000px;
       margin: auto;
-      box-sizing: border-box;
     }
 
     h1 {
-      color: var(--accent);
+      color: var(--primary);
+      font-size: 2.4rem;
+      margin-bottom: 0.5em;
     }
 
     input, button {
       padding: 10px;
-      margin: 5px 0;
+      margin: 5px;
       border-radius: 5px;
-      border: none;
-      width: 100%;
-      max-width: 300px;
-      box-sizing: border-box;
-      transition: all var(--transition);
+      border: 1px solid #888;
+      transition: all 0.3s ease;
+    }
+
+    input:focus {
+      outline: none;
+      box-shadow: 0 0 5px var(--primary);
     }
 
     button {
-      background-color: var(--accent);
+      background-color: var(--primary);
       color: white;
-      font-weight: bold;
       cursor: pointer;
+      font-weight: bold;
     }
 
     button:hover {
-      opacity: 0.9;
-    }
-
-    .controls {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-bottom: 10px;
+      transform: scale(1.05);
+      box-shadow: 0 4px 10px rgba(255, 64, 129, 0.4);
     }
 
     table {
       width: 100%;
       margin-top: 20px;
       border-collapse: collapse;
-      background-color: var(--table-bg);
-      transition: background-color var(--transition);
+      background-color: var(--table-bg-dark);
+      transition: background-color 0.4s ease;
+    }
+
+    .light-mode table {
+      background-color: var(--table-bg-light);
     }
 
     th, td {
-      padding: 10px;
+      padding: 12px;
       border: 1px solid #333;
       text-align: center;
-      transition: all var(--transition);
-    }
-
-    input.inline-sell {
-      width: 80px;
-      padding: 5px;
-      text-align: center;
-      border-radius: 4px;
-      border: 1px solid #888;
+      font-size: 0.95rem;
     }
 
     .fade-in {
-      animation: fadeIn 0.4s ease-in-out;
+      animation: fadeIn 0.6s ease forwards;
     }
 
     @keyframes fadeIn {
@@ -94,16 +94,17 @@
       to { opacity: 1; transform: translateY(0); }
     }
 
-    .light-mode {
-      --bg: #ffffff;
-      --text: #121212;
-      --table-bg: #f3f3f3;
-      --accent: #0077ff;
+    .top-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 1em;
     }
 
     @media (max-width: 600px) {
-      .controls {
-        flex-direction: column;
+      input, button {
+        width: 100%;
+        box-sizing: border-box;
       }
     }
   </style>
@@ -111,17 +112,13 @@
 <body>
   <div class="container">
     <h1>Motorcu Muhasebeci</h1>
-    <div class="controls">
-      <button onclick="toggleTheme()">🔄 Karanlık / Aydınlık</button>
-      <button onclick="randomizeColors()">🎨 Renkleri Karıştır</button>
-      <button onclick="resetTheme()">♻️ Temayı Sıfırla</button>
-    </div>
-    <div class="controls">
-      <input type="text" id="item" placeholder="ÜRÜN (Shoei NXR2)">
-      <input type="text" id="type" placeholder="TÜR (Kask, Ceket...)">
+    <div class="top-bar">
+      <input type="text" id="item" placeholder="Ürün adı">
+      <input type="text" id="type" placeholder="Tür (kask, ceket...)">
       <input type="number" id="price" placeholder="Anlaşılan Fiyat" oninput="calculateTotal()">
-      <input type="number" id="total" placeholder="Gönderilecek Tutar" readonly>
+      <input type="number" id="total" placeholder="Gönderilecek (€)" readonly>
       <button onclick="addEntry()">Ekle</button>
+      <button onclick="toggleTheme()">Karanlık / Aydınlık</button>
     </div>
     <table id="list">
       <tr>
@@ -157,13 +154,12 @@
       const type = document.getElementById("type").value;
       const agreed = parseFloat(document.getElementById("price").value);
       const total = parseFloat(document.getElementById("total").value);
+      const fee = total - agreed;
 
       if (!item || !type || isNaN(agreed) || isNaN(total)) {
-        alert("Tüm alanlar doldurulmalı moruk!");
+        alert("Tüm alanları doldur moruk!");
         return;
       }
-
-      const fee = total - agreed;
 
       const { error } = await supabase.from("gears").insert([
         {
@@ -175,10 +171,8 @@
         }
       ]);
 
-      if (error) {
-        alert("Hata: " + error.message);
-      } else {
-        await loadData();
+      if (!error) {
+        loadData();
         document.getElementById("item").value = "";
         document.getElementById("type").value = "";
         document.getElementById("price").value = "";
@@ -187,18 +181,29 @@
     }
 
     async function loadData() {
-      const { data, error } = await supabase.from("gears").select("*").order('id', { ascending: true });
+      const { data, error } = await supabase.from("gears").select("*").order("id", { ascending: true });
       if (error) {
         alert("Veriler çekilemedi: " + error.message);
         return;
       }
 
       const table = document.getElementById("list");
-      while (table.rows.length > 1) table.deleteRow(1);
+      table.innerHTML = `
+        <tr>
+          <th>ÜRÜN</th>
+          <th>TÜR</th>
+          <th>Anlaşılan Fiyat</th>
+          <th>PayPal Ücreti</th>
+          <th>Gönderilen</th>
+          <th>Satış</th>
+          <th>Kâr (%)</th>
+        </tr>
+      `;
 
       data.forEach(row => {
         const newRow = table.insertRow();
         newRow.classList.add("fade-in");
+
         const sellInputId = "sell_" + row.id;
         const profitId = "profit_" + row.id;
 
@@ -209,7 +214,8 @@
           <td>€${row.paypal_fee.toFixed(2)}</td>
           <td>€${row.total_sent.toFixed(2)}</td>
           <td>
-            <input type="number" id="${sellInputId}" class="inline-sell" placeholder="Satıldı mı?" onkeypress="handleSell(event, ${row.id}, ${row.total_sent}, '${sellInputId}', '${profitId}')">
+            <input type="number" id="${sellInputId}" value="${row.sold_price !== null ? row.sold_price : ''}" 
+              placeholder="Satıldı mı?" onkeypress="handleSell(event, ${row.id}, ${row.total_sent}, '${sellInputId}', '${profitId}')">
           </td>
           <td id="${profitId}">${row.profit_percent !== null ? row.profit_percent.toFixed(2) + "%" : "—"}</td>
         `;
@@ -221,6 +227,7 @@
         const soldPrice = parseFloat(document.getElementById(inputId).value);
         if (!isNaN(soldPrice)) {
           const profit = ((soldPrice - totalSent) / totalSent) * 100;
+
           const { error } = await supabase.from("gears")
             .update({ sold_price: soldPrice, profit_percent: profit })
             .eq("id", id);
@@ -234,31 +241,6 @@
 
     function toggleTheme() {
       document.body.classList.toggle("light-mode");
-    }
-
-    function resetTheme() {
-      document.body.removeAttribute("style");
-      document.querySelectorAll("input, button, table, th, td").forEach(el => {
-        el.removeAttribute("style");
-      });
-    }
-
-    function randomizeColors() {
-      function randomColor() {
-        const letters = '0123456789ABCDEF';
-        let color = '#';
-        for (let i = 0; i < 6; i++) {
-          color += letters[Math.floor(Math.random() * 16)];
-        }
-        return color;
-      }
-
-      document.body.style.backgroundColor = randomColor();
-      document.body.style.color = randomColor();
-      document.querySelectorAll("input, button, table, th, td").forEach(el => {
-        el.style.backgroundColor = randomColor();
-        el.style.color = randomColor();
-      });
     }
 
     window.onload = loadData;
