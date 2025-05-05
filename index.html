@@ -13,22 +13,18 @@
       color: #f1f1f1;
       font-family: 'Segoe UI', sans-serif;
     }
-
     .light-mode {
       background-color: #ffffff;
       color: #111;
     }
-
     .container {
       max-width: 1000px;
       margin: auto;
     }
-
     h1 {
       color: #ff4081;
       font-size: 2rem;
     }
-
     input, button {
       padding: 10px;
       margin: 5px;
@@ -36,54 +32,56 @@
       border: 1px solid #888;
       transition: all 0.3s ease;
     }
-
     input:focus {
       outline: none;
       box-shadow: 0 0 5px #ff4081;
     }
-
     button {
       background-color: #ff4081;
       color: white;
       font-weight: bold;
       cursor: pointer;
     }
-
     button:hover {
       transform: scale(1.05);
     }
-
+    .top-bar, .stats-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 1em;
+    }
+    .stat-box {
+      background-color: #1e1e1e;
+      padding: 10px 15px;
+      border-radius: 8px;
+      font-weight: bold;
+      min-width: 180px;
+    }
+    .light-mode .stat-box {
+      background-color: #eeeeee;
+      color: #111;
+    }
     table {
       width: 100%;
       margin-top: 20px;
       border-collapse: collapse;
       background-color: #1e1e1e;
     }
-
     .light-mode table {
       background-color: #f9f9f9;
     }
-
     th, td {
       padding: 12px;
       border: 1px solid #333;
       text-align: center;
       font-size: 0.95rem;
     }
-
-    .top-bar {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-bottom: 1em;
-    }
-
     .inline-sell {
       min-width: 100px;
       padding: 8px;
       font-size: 1rem;
     }
-
     .delete-btn {
       background-color: #ff4d4d;
       border: none;
@@ -92,31 +90,27 @@
       border-radius: 4px;
       cursor: pointer;
     }
-
     .delete-btn:hover {
       background-color: #e60000;
     }
-
     @media (max-width: 600px) {
       input, button {
         width: 100%;
         box-sizing: border-box;
       }
     }
-
-    .fade-in {
-      animation: fadeIn 0.5s ease;
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
   </style>
 </head>
 <body>
   <div class="container">
     <h1>Motorcu Muhasebeci</h1>
+
+    <div class="stats-bar">
+      <div class="stat-box" id="total-sent">💸 Gönderilen: €0.00</div>
+      <div class="stat-box" id="total-sold">💰 Satış: €0.00</div>
+      <div class="stat-box" id="avg-profit">📈 Ortalama Kâr: —</div>
+    </div>
+
     <div class="top-bar">
       <input type="text" id="item" placeholder="Ürün adı">
       <input type="text" id="type" placeholder="Tür">
@@ -179,9 +173,35 @@
       document.getElementById("total").value = "";
     }
 
+    async function deleteEntry(id) {
+      if (confirm("Bu ürünü silmek istediğine emin misin?")) {
+        await supabase.from("gears").delete().eq("id", id);
+        loadData();
+      }
+    }
+
+    async function handleSell(e, id, totalSent, inputId, profitId) {
+      if (e.key === "Enter") {
+        const soldPrice = parseFloat(document.getElementById(inputId).value);
+        if (!isNaN(soldPrice)) {
+          const profit = ((soldPrice - totalSent) / totalSent) * 100;
+          await supabase.from("gears")
+            .update({ sold_price: soldPrice, profit_percent: profit })
+            .eq("id", id);
+          document.getElementById(profitId).innerText = profit.toFixed(2) + "%";
+          loadData();
+        }
+      }
+    }
+
     async function loadData() {
       const { data } = await supabase.from("gears").select("*").order("id", { ascending: true });
       const table = document.getElementById("list");
+      let totalSent = 0;
+      let totalSold = 0;
+      let profitSum = 0;
+      let profitCount = 0;
+
       table.innerHTML = `
         <tr>
           <th>ÜRÜN</th>
@@ -197,10 +217,17 @@
 
       data.forEach(row => {
         const r = table.insertRow();
-        r.classList.add("fade-in");
-
         const sellInputId = "sell_" + row.id;
         const profitId = "profit_" + row.id;
+
+        totalSent += row.total_sent;
+        if (row.sold_price !== null) {
+          totalSold += row.sold_price;
+        }
+        if (row.profit_percent !== null) {
+          profitSum += row.profit_percent;
+          profitCount++;
+        }
 
         r.innerHTML = `
           <td>${row.item}</td>
@@ -213,28 +240,10 @@
           <td><button class="delete-btn" onclick="deleteEntry(${row.id})">Sil</button></td>
         `;
       });
-    }
 
-    async function handleSell(e, id, totalSent, inputId, profitId) {
-      if (e.key === "Enter") {
-        const soldPrice = parseFloat(document.getElementById(inputId).value);
-        if (!isNaN(soldPrice)) {
-          const profit = ((soldPrice - totalSent) / totalSent) * 100;
-
-          await supabase.from("gears")
-            .update({ sold_price: soldPrice, profit_percent: profit })
-            .eq("id", id);
-
-          document.getElementById(profitId).innerText = profit.toFixed(2) + "%";
-        }
-      }
-    }
-
-    async function deleteEntry(id) {
-      if (confirm("Bu ürünü silmek istediğine emin misin?")) {
-        await supabase.from("gears").delete().eq("id", id);
-        loadData();
-      }
+      document.getElementById("total-sent").innerText = `💸 Gönderilen: €${totalSent.toFixed(2)}`;
+      document.getElementById("total-sold").innerText = `💰 Satış: €${totalSold.toFixed(2)}`;
+      document.getElementById("avg-profit").innerText = profitCount > 0 ? `📈 Ortalama Kâr: ${(profitSum / profitCount).toFixed(2)}%` : "📈 Ortalama Kâr: —";
     }
 
     function toggleTheme() {
