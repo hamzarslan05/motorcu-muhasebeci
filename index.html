@@ -1,33 +1,22 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Motorcu Muhasebeci</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
   <style>
-    :root {
-      --dark-bg: #121212;
-      --light-bg: #ffffff;
-      --dark-text: #f1f1f1;
-      --light-text: #111111;
-      --primary: #ff4081;
-      --table-bg-dark: #1e1e1e;
-      --table-bg-light: #f9f9f9;
-    }
-
     body {
-      font-family: 'Segoe UI', sans-serif;
       margin: 0;
       padding: 20px;
-      background-color: var(--dark-bg);
-      color: var(--dark-text);
-      transition: background-color 0.4s ease, color 0.4s ease;
+      background-color: #121212;
+      color: #f1f1f1;
+      font-family: 'Segoe UI', sans-serif;
     }
 
     .light-mode {
-      background-color: var(--light-bg);
-      color: var(--light-text);
+      background-color: #ffffff;
+      color: #111;
     }
 
     .container {
@@ -36,9 +25,8 @@
     }
 
     h1 {
-      color: var(--primary);
-      font-size: 2.4rem;
-      margin-bottom: 0.5em;
+      color: #ff4081;
+      font-size: 2rem;
     }
 
     input, button {
@@ -51,31 +39,29 @@
 
     input:focus {
       outline: none;
-      box-shadow: 0 0 5px var(--primary);
+      box-shadow: 0 0 5px #ff4081;
     }
 
     button {
-      background-color: var(--primary);
+      background-color: #ff4081;
       color: white;
-      cursor: pointer;
       font-weight: bold;
+      cursor: pointer;
     }
 
     button:hover {
       transform: scale(1.05);
-      box-shadow: 0 4px 10px rgba(255, 64, 129, 0.4);
     }
 
     table {
       width: 100%;
       margin-top: 20px;
       border-collapse: collapse;
-      background-color: var(--table-bg-dark);
-      transition: background-color 0.4s ease;
+      background-color: #1e1e1e;
     }
 
     .light-mode table {
-      background-color: var(--table-bg-light);
+      background-color: #f9f9f9;
     }
 
     th, td {
@@ -85,20 +71,30 @@
       font-size: 0.95rem;
     }
 
-    .fade-in {
-      animation: fadeIn 0.6s ease forwards;
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
     .top-bar {
       display: flex;
       flex-wrap: wrap;
       gap: 10px;
       margin-bottom: 1em;
+    }
+
+    .inline-sell {
+      min-width: 100px;
+      padding: 8px;
+      font-size: 1rem;
+    }
+
+    .delete-btn {
+      background-color: #ff4d4d;
+      border: none;
+      color: white;
+      padding: 5px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .delete-btn:hover {
+      background-color: #e60000;
     }
 
     @media (max-width: 600px) {
@@ -107,6 +103,15 @@
         box-sizing: border-box;
       }
     }
+
+    .fade-in {
+      animation: fadeIn 0.5s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
   </style>
 </head>
 <body>
@@ -114,12 +119,13 @@
     <h1>Motorcu Muhasebeci</h1>
     <div class="top-bar">
       <input type="text" id="item" placeholder="Ürün adı">
-      <input type="text" id="type" placeholder="Tür (kask, ceket...)">
+      <input type="text" id="type" placeholder="Tür">
       <input type="number" id="price" placeholder="Anlaşılan Fiyat" oninput="calculateTotal()">
       <input type="number" id="total" placeholder="Gönderilecek (€)" readonly>
       <button onclick="addEntry()">Ekle</button>
       <button onclick="toggleTheme()">Karanlık / Aydınlık</button>
     </div>
+
     <table id="list">
       <tr>
         <th>ÜRÜN</th>
@@ -129,6 +135,7 @@
         <th>Gönderilen</th>
         <th>Satış</th>
         <th>Kâr (%)</th>
+        <th>Sil</th>
       </tr>
     </table>
   </div>
@@ -161,32 +168,19 @@
         return;
       }
 
-      const { error } = await supabase.from("gears").insert([
-        {
-          item,
-          type,
-          agreed_price: agreed,
-          paypal_fee: fee,
-          total_sent: total
-        }
+      await supabase.from("gears").insert([
+        { item, type, agreed_price: agreed, paypal_fee: fee, total_sent: total }
       ]);
 
-      if (!error) {
-        loadData();
-        document.getElementById("item").value = "";
-        document.getElementById("type").value = "";
-        document.getElementById("price").value = "";
-        document.getElementById("total").value = "";
-      }
+      loadData();
+      document.getElementById("item").value = "";
+      document.getElementById("type").value = "";
+      document.getElementById("price").value = "";
+      document.getElementById("total").value = "";
     }
 
     async function loadData() {
-      const { data, error } = await supabase.from("gears").select("*").order("id", { ascending: true });
-      if (error) {
-        alert("Veriler çekilemedi: " + error.message);
-        return;
-      }
-
+      const { data } = await supabase.from("gears").select("*").order("id", { ascending: true });
       const table = document.getElementById("list");
       table.innerHTML = `
         <tr>
@@ -197,27 +191,26 @@
           <th>Gönderilen</th>
           <th>Satış</th>
           <th>Kâr (%)</th>
+          <th>Sil</th>
         </tr>
       `;
 
       data.forEach(row => {
-        const newRow = table.insertRow();
-        newRow.classList.add("fade-in");
+        const r = table.insertRow();
+        r.classList.add("fade-in");
 
         const sellInputId = "sell_" + row.id;
         const profitId = "profit_" + row.id;
 
-        newRow.innerHTML = `
+        r.innerHTML = `
           <td>${row.item}</td>
           <td>${row.type}</td>
           <td>€${row.agreed_price.toFixed(2)}</td>
           <td>€${row.paypal_fee.toFixed(2)}</td>
           <td>€${row.total_sent.toFixed(2)}</td>
-          <td>
-            <input type="number" id="${sellInputId}" value="${row.sold_price !== null ? row.sold_price : ''}" 
-              placeholder="Satıldı mı?" onkeypress="handleSell(event, ${row.id}, ${row.total_sent}, '${sellInputId}', '${profitId}')">
-          </td>
+          <td><input class="inline-sell" type="number" id="${sellInputId}" value="${row.sold_price !== null ? row.sold_price : ''}" placeholder="Satış" onkeypress="handleSell(event, ${row.id}, ${row.total_sent}, '${sellInputId}', '${profitId}')"></td>
           <td id="${profitId}">${row.profit_percent !== null ? row.profit_percent.toFixed(2) + "%" : "—"}</td>
+          <td><button class="delete-btn" onclick="deleteEntry(${row.id})">Sil</button></td>
         `;
       });
     }
@@ -228,14 +221,19 @@
         if (!isNaN(soldPrice)) {
           const profit = ((soldPrice - totalSent) / totalSent) * 100;
 
-          const { error } = await supabase.from("gears")
+          await supabase.from("gears")
             .update({ sold_price: soldPrice, profit_percent: profit })
             .eq("id", id);
 
-          if (!error) {
-            document.getElementById(profitId).innerText = profit.toFixed(2) + "%";
-          }
+          document.getElementById(profitId).innerText = profit.toFixed(2) + "%";
         }
+      }
+    }
+
+    async function deleteEntry(id) {
+      if (confirm("Bu ürünü silmek istediğine emin misin?")) {
+        await supabase.from("gears").delete().eq("id", id);
+        loadData();
       }
     }
 
