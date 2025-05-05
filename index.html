@@ -2,24 +2,35 @@
 <html lang="tr">
 <head>
   <meta charset="UTF-8">
-  <title>Motorcu Muhasebeci 3000</title>
+  <title>Motorcu Muhasebeci</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
   <style>
+    :root {
+      --bg: #121212;
+      --text: #f1f1f1;
+      --table-bg: #1e1e1e;
+      --accent: #ff4081;
+    }
+
     body {
       font-family: 'Segoe UI', sans-serif;
       margin: 0;
       padding: 20px;
-      background-color: #121212;
-      color: #f1f1f1;
+      background-color: var(--bg);
+      color: var(--text);
+      transition: all 0.3s ease;
     }
+
     .container {
       max-width: 900px;
       margin: auto;
     }
+
     h1 {
-      color: #ff4081;
+      color: var(--accent);
     }
+
     input {
       padding: 10px;
       margin: 5px;
@@ -27,27 +38,31 @@
       border: none;
       width: 160px;
     }
+
     button {
       padding: 10px;
       margin: 5px;
       border: none;
       border-radius: 5px;
-      background-color: #ff4081;
+      background-color: var(--accent);
       color: white;
       font-weight: bold;
       cursor: pointer;
     }
+
     table {
       width: 100%;
       margin-top: 20px;
       border-collapse: collapse;
-      background-color: #1e1e1e;
+      background-color: var(--table-bg);
     }
+
     th, td {
       padding: 10px;
       border: 1px solid #333;
       text-align: center;
     }
+
     input.inline-sell {
       width: 80px;
       padding: 5px;
@@ -59,7 +74,11 @@
 </head>
 <body>
   <div class="container">
-    <h1>Motorcu Muhasebeci 3000</h1>
+    <h1>
+      Motorcu Muhasebeci
+      <button onclick="toggleTheme()">🌗 Tema</button>
+      <button onclick="randomizeColors()">🎨 Renkleri Karıştır</button>
+    </h1>
     <div>
       <input type="text" id="item" placeholder="ÜRÜN (Shoei NXR2)">
       <input type="text" id="type" placeholder="TÜR (Kask, Ceket...)">
@@ -109,7 +128,7 @@
 
       const fee = total - agreed;
 
-      const { data, error } = await supabase.from("gears").insert([
+      const { error } = await supabase.from("gears").insert([
         {
           item,
           type,
@@ -122,19 +141,26 @@
       if (error) {
         alert("Hata: " + error.message);
       } else {
-        location.reload();
+        loadData(); // Reload only the table
+        document.getElementById("item").value = "";
+        document.getElementById("type").value = "";
+        document.getElementById("price").value = "";
+        document.getElementById("total").value = "";
       }
     }
 
     async function loadData() {
-      const { data, error } = await supabase.from("gears").select("*");
+      const { data, error } = await supabase.from("gears").select("*").order('id', { ascending: true });
       if (error) {
         alert("Veriler çekilemedi: " + error.message);
         return;
       }
 
+      const table = document.getElementById("list");
+      // Temizle (başlık satırını koruyarak)
+      while (table.rows.length > 1) table.deleteRow(1);
+
       data.forEach(row => {
-        const table = document.getElementById("list");
         const newRow = table.insertRow();
 
         const sellInputId = "sell_" + row.id;
@@ -169,6 +195,28 @@
           }
         }
       }
+    }
+
+    function toggleTheme() {
+      document.body.classList.toggle("light-mode");
+    }
+
+    function randomizeColors() {
+      function randomColor() {
+        const letters = '0123456789ABCDEF';
+        let color = '#';
+        for (let i = 0; i < 6; i++) {
+          color += letters[Math.floor(Math.random() * 16)];
+        }
+        return color;
+      }
+
+      document.body.style.backgroundColor = randomColor();
+      document.body.style.color = randomColor();
+      document.querySelectorAll("input, button, table, th, td").forEach(el => {
+        el.style.backgroundColor = randomColor();
+        el.style.color = randomColor();
+      });
     }
 
     window.onload = loadData;
